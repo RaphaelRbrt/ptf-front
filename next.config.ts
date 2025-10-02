@@ -13,6 +13,8 @@ let nextConfig: import('next').NextConfig = {
     },
     distDir: "build",
 };
-nextConfig = isExportMode ? {...nextConfig, output: "export"} : nextConfig
+nextConfig = isExportMode 
+  ? { ...nextConfig, output: "export" } 
+  : { ...nextConfig, output: "standalone" };
 
 module.exports = withSvgr(nextConfig);
