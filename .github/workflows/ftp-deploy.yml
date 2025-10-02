@@ -1,26 +1,36 @@
-name: Deploy to SFTP
+name: Deploy to SFTP + Docker
 
 on:
   push:
     branches:
-      - '**' # Déclenchement sur push pour toutes les branches
+      - '**'
 
 jobs:
   sftp-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Vérifier le dépôt
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      # Installer les dépendances et construire le projet
       - name: Install Dependencies and Build
         run: |
           npm install
           npm run build:static
 
-      # Déployer sur le SFTP de staging
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/portfolio-perso:latest
+
       - name: Deploy to Staging SFTP
         if: github.ref != 'refs/heads/main'
         uses: Dylan700/sftp-upload-action@v1.2.3
@@ -32,7 +42,6 @@ jobs:
           uploads: |
             ./build/ => ./staging/
 
-      # Déployer sur le SFTP de production
       - name: Deploy to Production SFTP
         if: github.ref == 'refs/heads/main'
         uses: Dylan700/sftp-upload-action@v1.2.3
