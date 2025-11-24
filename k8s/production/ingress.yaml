@@ -1,0 +1,56 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ptf-front
+  namespace: ptf-production
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`raphaelrbr.com`) || Host(`www.raphaelrbr.com`)
+      kind: Rule
+      services:
+        - name: ptf-front
+          port: 3000
+      middlewares:
+        - name: compress
+        - name: security-headers
+        - name: redirect-www
+  tls:
+    secretName: ptf-front-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: compress
+  namespace: ptf-production
+spec:
+  compress: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: ptf-production
+spec:
+  headers:
+    frameDeny: true
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+    stsPreload: true
+    stsSeconds: 31536000
+    customFrameOptionsValue: "SAMEORIGIN"
+    contentSecurityPolicy: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:;"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-www
+  namespace: ptf-production
+spec:
+  redirectRegex:
+    regex: ^https://www\.(.*)
+    replacement: https://$1
+    permanent: true

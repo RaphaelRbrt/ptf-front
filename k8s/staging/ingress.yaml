@@ -1,0 +1,26 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ptf-front
+  namespace: ptf-staging
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`staging.raphaelrbr.com`)
+      kind: Rule
+      services:
+        - name: ptf-front
+          port: 3000
+      middlewares:
+        - name: compress
+  tls:
+    secretName: ptf-front-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: compress
+  namespace: ptf-staging
+spec:
+  compress: {}
