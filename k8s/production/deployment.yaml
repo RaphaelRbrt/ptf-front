@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ptf-front
-  namespace: cvb-production
+  namespace: ptf-production
 spec:
   replicas: 1
   selector:
@@ -15,28 +15,15 @@ spec:
     spec:
       serviceAccountName: ptf-front
       imagePullSecrets:
-        - name: ghcr-secret 
+        - name: ghcr-secret
       containers:
-      - name: admin
+      - name: frontend
         image: ghcr.io/raphaelrbrt/ptf-front:sha-a9b55a0b5649cb2d300f16b39dfb2f74c054a33d
         ports:
         - containerPort: 3000
         env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: cvb-secrets
-              key: database-url
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: cvb-secrets
-              key: redis-url
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: cvb-secrets
-              key: ptf-front-secret-key
+        - name: NODE_ENV
+          value: "production"
         - name: KUBERNETES_NAMESPACE
           valueFrom:
             fieldRef:

@@ -1,4 +1,4 @@
-name: Deploy CVB Admin
+name: Deploy PTF Front
 
 on:
   push:
@@ -39,13 +39,14 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=sha,format=long
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -68,20 +69,22 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "environment=production" >> "$GITHUB_OUTPUT"
             echo "path=k8s/production" >> "$GITHUB_OUTPUT"
+            echo "host=raphaelrbr.com" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
             echo "environment=staging" >> "$GITHUB_OUTPUT"
             echo "path=k8s/staging" >> "$GITHUB_OUTPUT"
+            echo "host=staging.raphaelrbr.com" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Update deployment manifest
         run: |
           mkdir -p ${{ steps.env.outputs.path }}
-          cat > ${{ steps.env.outputs.path }}/deployment.yaml <<EOF
+          cat > ${{ steps.env.outputs.path }}/deployment.yaml <<'EOF'
           apiVersion: apps/v1
           kind: Deployment
           metadata:
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           spec:
             replicas: 1
             selector:
@@ -94,28 +97,15 @@ jobs:
               spec:
                 serviceAccountName: ptf-front
                 imagePullSecrets:
-                  - name: ghcr-secret 
+                  - name: ghcr-secret
                 containers:
-                - name: admin
-                  image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+                - name: frontend
+                  image: ghcr.io/raphaelrbrt/ptf-front:sha-${{ github.sha }}
                   ports:
                   - containerPort: 3000
                   env:
-                  - name: DATABASE_URL
-                    valueFrom:
-                      secretKeyRef:
-                        name: cvb-secrets
-                        key: database-url
-                  - name: REDIS_URL
-                    valueFrom:
-                      secretKeyRef:
-                        name: cvb-secrets
-                        key: redis-url
-                  - name: SECRET_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: cvb-secrets
-                        key: ptf-front-secret-key
+                  - name: NODE_ENV
+                    value: "production"
                   - name: KUBERNETES_NAMESPACE
                     valueFrom:
                       fieldRef:
@@ -131,12 +121,12 @@ jobs:
 
       - name: Create Service manifest
         run: |
-          cat > ${{ steps.env.outputs.path }}/service.yaml <<EOF
+          cat > ${{ steps.env.outputs.path }}/service.yaml <<'EOF'
           apiVersion: v1
           kind: Service
           metadata:
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           spec:
             selector:
               app: ptf-front
@@ -147,45 +137,105 @@ jobs:
 
       - name: Create ServiceAccount and RBAC
         run: |
-          cat > ${{ steps.env.outputs.path }}/rbac.yaml <<EOF
+          cat > ${{ steps.env.outputs.path }}/rbac.yaml <<'EOF'
           apiVersion: v1
           kind: ServiceAccount
           metadata:
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           ---
           apiVersion: rbac.authorization.k8s.io/v1
           kind: Role
           metadata:
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           rules:
           - apiGroups: [""]
             resources: ["pods", "services"]
-            verbs: ["get", "list", "watch", "delete"]
+            verbs: ["get", "list", "watch"]
           - apiGroups: ["apps"]
-            resources: ["deployments", "statefulsets"]
-            verbs: ["get", "list", "watch", "patch"]
-          - apiGroups: [""]
-            resources: ["pods/log"]
-            verbs: ["get", "list"]
-          - apiGroups: ["batch"]
-            resources: ["jobs"]
-            verbs: ["get", "list", "watch", "create", "delete"]
+            resources: ["deployments"]
+            verbs: ["get", "list", "watch"]
           ---
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
           metadata:
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           subjects:
           - kind: ServiceAccount
             name: ptf-front
-            namespace: cvb-${{ steps.env.outputs.environment }}
+            namespace: ptf-${{ steps.env.outputs.environment }}
           roleRef:
             kind: Role
             name: ptf-front
             apiGroup: rbac.authorization.k8s.io
+          EOF
+
+      - name: Write ingress.yaml
+        run: |
+          cat > ${{ steps.env.outputs.path }}/ingress.yaml <<'EOF'
+          apiVersion: traefik.io/v1alpha1
+          kind: IngressRoute
+          metadata:
+            name: ptf-front
+            namespace: ptf-${{ steps.env.outputs.environment }}
+          spec:
+            entryPoints:
+              - websecure
+            routes:
+              - match: Host(`${{ steps.env.outputs.host }}`)
+                kind: Rule
+                services:
+                  - name: ptf-front
+                    port: 3000
+                middlewares:
+                  - name: compress
+                  - name: security-headers
+            tls:
+              secretName: ptf-${{ steps.env.outputs.environment }}-tls
+          ---
+          apiVersion: traefik.io/v1alpha1
+          kind: Middleware
+          metadata:
+            name: compress
+            namespace: ptf-${{ steps.env.outputs.environment }}
+          spec:
+            compress: {}
+          ---
+          apiVersion: traefik.io/v1alpha1
+          kind: Middleware
+          metadata:
+            name: security-headers
+            namespace: ptf-${{ steps.env.outputs.environment }}
+          spec:
+            headers:
+              frameDeny: true
+              browserXssFilter: true
+              contentTypeNosniff: true
+              forceSTSHeader: true
+              stsIncludeSubdomains: true
+              stsPreload: true
+              stsSeconds: 31536000
+          EOF
+
+      - name: Write kustomization.yaml
+        run: |
+          cat > ${{ steps.env.outputs.path }}/kustomization.yaml <<'EOF'
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+
+          namespace: ptf-${{ steps.env.outputs.environment }}
+
+          resources:
+            - deployment.yaml
+            - service.yaml
+            - rbac.yaml
+            - ingress.yaml
+
+          commonLabels:
+            app: ptf-front
+            environment: ${{ steps.env.outputs.environment }}
           EOF
 
       - name: Commit and push changes

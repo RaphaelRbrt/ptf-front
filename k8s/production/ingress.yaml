@@ -17,7 +17,7 @@ spec:
         - name: security-headers
         - name: redirect-www
   tls:
-    secretName: ptf-front-tls
+    secretName: ptf-production-tls
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
