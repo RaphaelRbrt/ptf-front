@@ -16,9 +16,15 @@ ENV NODE_ENV=production
 ENV PORT=3000
 WORKDIR /app
 
-COPY --from=builder /app/build/standalone ./
-COPY --from=builder /app/build/static ./build/static
-COPY --from=builder /app/public ./public
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/build/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/build/static ./build/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+USER nextjs
 
 EXPOSE 3000
 CMD ["node", "server.js"]
