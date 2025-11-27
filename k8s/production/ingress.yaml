@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`raphaelrbr.com`) || Host(`www.raphaelrbr.com`)
+    - match: Host(`raphaelrbr.com`)
       kind: Rule
       services:
         - name: ptf-front
@@ -15,7 +15,6 @@ spec:
       middlewares:
         - name: compress
         - name: security-headers
-        - name: redirect-www
   tls:
     secretName: ptf-production-tls
 ---
@@ -41,16 +40,3 @@ spec:
     stsIncludeSubdomains: true
     stsPreload: true
     stsSeconds: 31536000
-    customFrameOptionsValue: "SAMEORIGIN"
-    contentSecurityPolicy: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:;"
----
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: redirect-www
-  namespace: ptf-production
-spec:
-  redirectRegex:
-    regex: ^https://www\.(.*)
-    replacement: https://$1
-    permanent: true
