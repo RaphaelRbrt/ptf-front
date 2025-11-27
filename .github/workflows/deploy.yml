@@ -242,11 +242,13 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull --rebase origin ${{ github.ref_name }} || true
           git add .
-          git commit -m "Deploy (${{ steps.env.outputs.environment }}): Update image to sha-${{ github.sha }}"
+          git commit -m "Deploy (${{ steps.env.outputs.environment }}): Update image to sha-${{ github.sha }}" || true
 
       - name: Push changes
         uses: ad-m/github-push-action@v0.8.0
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           branch: ${{ github.ref_name }}
+          force: true
