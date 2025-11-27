@@ -98,9 +98,18 @@ jobs:
                 serviceAccountName: ptf-front
                 imagePullSecrets:
                   - name: ghcr-secret
+                securityContext:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
                 containers:
                 - name: frontend
                   image: ghcr.io/raphaelrbrt/ptf-front:sha-${{ github.sha }}
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                        - ALL
                   ports:
                   - containerPort: 3000
                   env:

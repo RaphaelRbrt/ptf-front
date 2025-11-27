@@ -16,9 +16,18 @@ spec:
       serviceAccountName: ptf-front
       imagePullSecrets:
         - name: ghcr-secret
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: frontend
         image: ghcr.io/raphaelrbrt/ptf-front:sha-f4322aa064a883cd69e84a86ddbbb7b118494eae
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         ports:
         - containerPort: 3000
         env:
