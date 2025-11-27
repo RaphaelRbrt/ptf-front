@@ -5,6 +5,8 @@ namespace: ptf-staging
 
 resources:
   - deployment.yaml
+  - service.yaml
+  - rbac.yaml
   - ingress.yaml
 
 commonLabels:

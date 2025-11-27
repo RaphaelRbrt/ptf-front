@@ -14,6 +14,7 @@ spec:
           port: 3000
       middlewares:
         - name: compress
+        - name: security-headers
   tls:
     secretName: ptf-staging-tls
 ---
@@ -24,3 +25,18 @@ metadata:
   namespace: ptf-staging
 spec:
   compress: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: ptf-staging
+spec:
+  headers:
+    frameDeny: true
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+    stsPreload: true
+    stsSeconds: 31536000
