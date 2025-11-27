@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: frontend
-        image: ghcr.io/raphaelrbrt/ptf-front:sha-f4322aa064a883cd69e84a86ddbbb7b118494eae
+        image: ghcr.io/raphaelrbrt/ptf-front:sha-16573f28162122e1835495157bee21a5627f9754
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
