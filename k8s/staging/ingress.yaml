@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`staging.raphaelrbr.com`)
+    - match: Host(`staging.raphaelrbr.com`) || Host(`www.staging.raphaelrbr.com`)
       kind: Rule
       services:
         - name: ptf-front
