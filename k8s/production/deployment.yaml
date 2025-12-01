@@ -18,7 +18,7 @@ spec:
         - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/raphaelrbrt/ptf-front:sha-966a03258ce7b9ce8e1956ae898b682dfa6d2480
+        image: ghcr.io/raphaelrbrt/ptf-front:sha-8ea4ece389fa8c84284311a173c047bc8fe2e312
         ports:
         - containerPort: 3000
         env:
